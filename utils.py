@@ -4,20 +4,37 @@ import csv
 import random
 import time
 import requests
+from selenium import webdriver
+from selenium.webdriver.firefox.service import Service
+# from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from exceptions import SaveCSVFileException
+from extract import extract_year, extract_authors, extract_journal
 
-BASE_URL = "https://scholar.google.com.br"
 
-def get_results(query, start_year=2021, results_per_page=10, max_results=30):
+
+def get_results(query, start_year=2021, results_per_page=10, max_results=400):
     """Get all possible results from Google Scholar."""
     results = []
+    BASEURL = "https://scholar.google.com.br"
     start = 0
     total_fetched = 0
 
+    service = Service()
+    driver = webdriver.Firefox(service=service)
+    # driver.get(BASE_URL)
+
+    # search_box = driver.find_element(By.NAME, "q")
+    # time.sleep(2)
+    # search_box.send_keys("demência and idosos and aplicativo movel")
+    # time.sleep(3)
+    # search_box.submit()
+    # time.sleep(40)
+    flag = True
+
     while total_fetched < max_results:
-        url = BASE_URL
+        url = BASEURL
         url += f"/scholar?hl=pt-BR&as_sdt=0%2C5&as_ylo={start_year}&q={query}&start={start}&btnG="
 
         print(url)
@@ -30,18 +47,22 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=30):
         }
 
         try:
-            response = requests.get(url, headers=header, timeout=10)
-            print("+---get response")
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, "html.parser")
+            driver.get(url)
+            if flag:
+                input()
+                flag = False
 
-            #print(soup.prettify())
-            print("+---parse html")
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            is_citation = False
+
+            # print(soup.prettify())
+            # input()
+
 
             results_found = soup.find_all("h3", class_="gs_rt")
-            print("+---get all tags")
+            # print("+---get all tags")
             years_found = soup.find_all("div", class_="gs_a")
-            print("+---get results(year):")
+            # print("+---get results(year):")
             # print(years_found)
 
             if not results_found:
@@ -49,30 +70,47 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=30):
                 break
 
             for i, result in enumerate(results_found):
-                print(f"    +---loop{i}")
                 a_tag = result.find("a")
                 if a_tag:
                     title = a_tag.text
                     link = a_tag["href"]
+                    is_citation = False
                 else:
-                    title = result.find("span").text
+                    is_citation = True
+                    title = result.get_text(strip=True)
                     link = ""
-                    print("        +---else")
-                print("        +---get all")
+                    # print("        +---else")
+                    print(title)
+                # print("        +---get all")
 
-                year_text = years_found[i].text
-                year = extract_year(year_text)
+                about_text = years_found[i].text
+                if about_text:
+                    about_text = about_text.replace('\xa0', ' ')
+                    about_text = about_text.replace('…', '')
+                # print("years found...")
+                print(about_text)
+                print("_"*20)
+                year = extract_year(about_text)
+                authors = extract_authors(about_text)
+                journal = extract_journal(about_text, is_citation=is_citation)
+                print(f"extracted year: {year}")
+                print(f"extracted authors: {authors}")
 
-                result.append({"title": title, "year": year, "link": link})
+                results.append({
+                    "title": title,
+                    "authors": authors,
+                    "journal": journal,
+                    "year": year,
+                    "link": link,
+                    })
                 total_fetched += 1
                 if total_fetched >= max_results:
                     break
 
                 # time.sleep(random.randrange(1,3))
-                print("    +---endLoop")
 
             start += results_per_page
-            time.sleep(random.randrange(70, 120))
+            time.sleep(random.randrange(13, 22))
 
         except requests.exceptions.RequestException as e:
             print(f"Erro ao acessar o Google Acadêmico: {e}")
@@ -85,21 +123,22 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=30):
 
     return results
 
-def extract_year(text):
-    """Extract the year from the publication info text."""
-    parts = text.split("-")
-    if len(parts) > 1:
-        try:
-            return int(parts[-1].strip())
-        except ValueError:
-            return None
-    return None
+# def extract_year(text):
+#     """Extract the year from the publication info text."""
+#     parts = text.split("-")
+#     print(parts)
+#     if len(parts) > 1:
+#         try:
+#             return int(parts[-1].strip())
+#         except ValueError:
+#             return None
+#     return None
 
 def save_data_csv(results, file_name="./data/data.csv"):
     """Save results of google in csv file."""
     try:
         with open(file_name, "w", newline="", encoding="utf-8") as csv_file:
-            fields = ["title", "year", "link"]
+            fields = ["title", "authors", "journal", "year", "link"]
             writer_csv = csv.DictWriter(csv_file, fieldnames=fields)
             writer_csv.writeheader()
             writer_csv.writerows(results)

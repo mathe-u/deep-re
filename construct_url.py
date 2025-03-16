@@ -7,6 +7,7 @@ def construct_url(
         year_start=None,
         start_index=0,
     ):
+    """Construct urls"""
     url = baseurl
     patents = "as_sdt=2007" if patents else "as_sdt=0,5"
     citations = f"as_vis={1 - int(citations)}"
