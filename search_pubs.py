@@ -1,7 +1,9 @@
+"""Search for publications"""
 import requests
 from construct_url import construct_url
 
 def search_pubs(query, patents=True, citations=True, year_start=None, start_index=0):
+    """Search for publications with query in url."""
     pubsearch = f"/scholar?hl=pt-BR&q={requests.utils.quote(query)}"
     url = construct_url(
         pubsearch,

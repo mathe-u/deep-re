@@ -13,20 +13,21 @@ def data_treat(text: str) -> str:
 
 def extract_year(text):
     """Extract year of pub."""
-    text = data_treat(text=text)
+    new_text = data_treat(text)
     pattern = r"\b\d{4}\b"
-    res = re.search(pattern=pattern, string=text)
+    res = re.search(pattern=pattern, string=new_text)
 
     if res:
         return res.group(0)
 
     return ""
 
-def extract_about(text):
+def extract_about(text: str) -> str:
     """Extract authors, jornal, etc... of pub."""
-    res = re.sub(pattern=extract_year(text=text), repl="", string=text)
+    new_text = data_treat(text)
+    res = re.sub(pattern=extract_year(text=new_text), repl="", string=new_text)
 
     if res:
-        return res.group(1)
+        return res
 
     return ""

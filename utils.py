@@ -1,6 +1,4 @@
 """Utils."""
-
-import csv
 import random
 import time
 import requests
@@ -9,8 +7,9 @@ from selenium.webdriver.firefox.service import Service
 # from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 # from fake_useragent import UserAgent
-from exceptions import SaveCSVFileException
 from extract import extract_year, extract_about
+from save_data import save_data_csv
+from search_pubs import search_pubs
 
 
 
@@ -35,7 +34,8 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
 
     while total_fetched < max_results:
         url = base_url
-        url += f"/scholar?hl=pt-BR&as_sdt=0%2C5&as_ylo={start_year}&q={query}&start={start}&btnG="
+        # url += f"/scholar?hl=pt-BR&as_sdt=0%2C5&as_ylo={start_year}&q={query}&start={start}&btnG="
+        url += search_pubs(query=query, year_start=start_year, start_index=start)
 
         print(url)
         # user_agent = UserAgent().random
@@ -85,9 +85,9 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
                 # print(about_text)
                 # print("_"*20)
                 year = extract_year(about_text)
+                print(f"extracted year: {year}")
                 more_info = extract_about(about_text)
-                # print(f"extracted year: {year}")
-                # print(f"extracted authors: {authors}")
+                print(f"extracted authors: {more_info}")
 
                 results.append({
                     "title": title,
@@ -100,6 +100,7 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
                     break
 
             start += results_per_page
+            save_data_csv(results=results, file_name="./data/results_tcc_1.csv")
             time.sleep(random.randrange(13, 22))
 
         except requests.exceptions.RequestException as e:
@@ -110,33 +111,3 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
             break
         except TypeError as e:
             print(f"Erro ao coletar dados: {e}")
-
-    return results
-
-# def extract_year(text):
-#     """Extract the year from the publication info text."""
-#     parts = text.split("-")
-#     print(parts)
-#     if len(parts) > 1:
-#         try:
-#             return int(parts[-1].strip())
-#         except ValueError:
-#             return None
-#     return None
-
-def save_data_csv(results, file_name="./data/data.csv"):
-    """Save results of google in csv file."""
-    try:
-        with open(file_name, "w", newline="", encoding="utf-8") as csv_file:
-            fields = [
-                "title",
-                "year",
-                "more_info",
-                "link",
-            ]
-            writer_csv = csv.DictWriter(csv_file, fieldnames=fields)
-            writer_csv.writeheader()
-            writer_csv.writerows(results)
-        print(f"Resultados salvos em '{file_name}' com sucesso!")
-    except SaveCSVFileException as e:
-        print(e)
