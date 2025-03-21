@@ -4,6 +4,7 @@ import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
 # from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 # from fake_useragent import UserAgent
@@ -13,15 +14,22 @@ from search_pubs import search_pubs
 
 
 
-def get_results(query, start_year=2021, results_per_page=10, max_results=400):
+def get_results(
+        query,
+        start_year=2021,
+        results_per_page=10,
+        max_results=400,
+        file_name="./data/results_tcc_1.csv",
+    ):
     """Get all possible results from Google Scholar."""
     results = []
-    base_url = "https://scholar.google.com.br"
     start = 0
     total_fetched = 0
 
     service = Service()
-    driver = webdriver.Firefox(service=service)
+    options = Options()
+    options.add_argument("--headless")
+    driver = webdriver.Firefox(service=service, options=options)
     # driver.get(BASE_URL)
 
     # search_box = driver.find_element(By.NAME, "q")
@@ -33,9 +41,8 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
     flag = True
 
     while total_fetched < max_results:
-        url = base_url
         # url += f"/scholar?hl=pt-BR&as_sdt=0%2C5&as_ylo={start_year}&q={query}&start={start}&btnG="
-        url += search_pubs(query=query, year_start=start_year, start_index=start)
+        url = search_pubs(query=query, year_start=start_year, start_index=start)
 
         print(url)
         # user_agent = UserAgent().random
@@ -47,12 +54,13 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
         # }
 
         try:
-            driver.get(url)
+            driver.get(f"https://scholar.google.com.br/{url}")
             if flag:
                 input()
                 flag = False
 
             soup = BeautifulSoup(driver.page_source, "html.parser")
+            # .replace(u'\xa0', u' ')
 
             # print(soup.prettify())
             # input()
@@ -100,8 +108,8 @@ def get_results(query, start_year=2021, results_per_page=10, max_results=400):
                     break
 
             start += results_per_page
-            save_data_csv(results=results, file_name="./data/results_tcc_1.csv")
-            time.sleep(random.randrange(13, 22))
+            save_data_csv(results=results, file_name=file_name)
+            time.sleep(random.randrange(13, 17))
 
         except requests.exceptions.RequestException as e:
             print(f"Erro ao acessar o Google Acadêmico: {e}")
